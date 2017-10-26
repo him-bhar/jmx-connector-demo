@@ -1,6 +1,9 @@
 package com.himanshu.jmx.server;
 
-import javax.management.MBeanServer;
+import com.himanshu.jmx.server.bean.HelloMBean;
+import com.himanshu.jmx.server.bean.IHelloMBean;
+
+import javax.management.*;
 import javax.management.remote.JMXAuthenticator;
 import javax.management.remote.JMXConnectorServer;
 import javax.management.remote.JMXConnectorServerFactory;
@@ -18,9 +21,10 @@ import java.util.Map;
  * Created by himanshu on 08-08-2017.
  */
 public class StartSecuredMBeanServer {
-  private void createJmxConnectorServer() throws IOException {
+  private void createJmxConnectorServer() throws IOException, MalformedObjectNameException, NotCompliantMBeanException, InstanceAlreadyExistsException, MBeanRegistrationException {
     LocateRegistry.createRegistry(1234);
     MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+
     JMXServiceURL url = new JMXServiceURL("service:jmx:rmi://localhost/jndi/rmi://localhost:1234/jmxrmi");
 
     Map<String, Object> envProperties = new HashMap<String, Object>();
@@ -33,9 +37,19 @@ public class StartSecuredMBeanServer {
         throw new RuntimeException("Auth failure");
       }
     });
-
+    registerBeans(mbs);
     JMXConnectorServer svr = JMXConnectorServerFactory.newJMXConnectorServer(url, envProperties, mbs);
     svr.start();
+  }
+
+  private void registerBeans(MBeanServer mbs) throws MalformedObjectNameException, NotCompliantMBeanException, InstanceAlreadyExistsException, MBeanRegistrationException {
+    registerHelloMBean(mbs, new HelloMBean());
+  }
+
+  private void registerHelloMBean(MBeanServer mbs, IHelloMBean helloMBean) throws MalformedObjectNameException, NotCompliantMBeanException, InstanceAlreadyExistsException, MBeanRegistrationException {
+    ObjectName helloBeanName = new ObjectName("com.himanshu.jmx.server.bean:type=HelloMBean");
+    StandardMBean mBean = new StandardMBean(helloMBean, IHelloMBean.class);
+    mbs.registerMBean(mBean, helloBeanName);
   }
 
   public static void main(String[] args) {
@@ -43,6 +57,14 @@ public class StartSecuredMBeanServer {
     try {
       mbeanServer.createJmxConnectorServer();
     } catch (IOException e) {
+      e.printStackTrace();
+    } catch (MalformedObjectNameException e) {
+      e.printStackTrace();
+    } catch (NotCompliantMBeanException e) {
+      e.printStackTrace();
+    } catch (InstanceAlreadyExistsException e) {
+      e.printStackTrace();
+    } catch (MBeanRegistrationException e) {
       e.printStackTrace();
     }
   }
